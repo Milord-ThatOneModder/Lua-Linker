@@ -1,6 +1,8 @@
 -- TODO add some comments and clean up the code, this is bad for now lol
 -- add split up to funcion's file and the file with hooks and shit
 
+local findtarget = dofile(... .. "/Lua/findtarget.lua")
+
 local function LinkAdd(target, otherTarget)
     target.AddLinked(otherTarget)
     otherTarget.AddLinked(target)
@@ -11,47 +13,6 @@ end
 local function LinkRemove(target, otherTarget)
     target.RemoveLinked(otherTarget)
     otherTarget.RemoveLinked(target)
-end
-
-local function FindClosestItem(submarine, position)
-    local closest = nil
-    for key, value in pairs(submarine and submarine.GetItems(false) or Item.ItemList) do
-        if value.Linkable and not value.HasTag("notlualinkable") and not value.HasTag("crate") and not value.HasTag("ammobox") and not value.HasTag("door") and not value.HasTag("smgammo") and not value.HasTag("hmgammo") then
-            -- check if placabke or if it does not have holdable component
-            local check_if_p_or_nh = false
-            local holdable = value.GetComponentString("Holdable")
-            if holdable == nil then
-                check_if_p_or_nh = true
-            else
-                if holdable.attachable == true then
-                    check_if_p_or_nh = true
-                end
-            end
-            if check_if_p_or_nh == true then
-                if Vector2.Distance(position, value.WorldPosition) < 100 then
-                    if closest == nil then closest = value end
-                    if Vector2.Distance(position, value.WorldPosition) <
-                        Vector2.Distance(position, closest.WorldPosition) then
-                        -- this should prevent items that are inside invetories be linkable
-                        if value.ParentInventory == nil then
-                            closest = value
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return closest
-end
-
-local function FindClientCharacter(character)
-    if CLIENT then return nil end
-    
-    for key, value in pairs(Client.ClientList) do
-        if value.Character == character then
-            return value
-        end
-    end
 end
 
 local function AddMessage(text, client)
@@ -66,37 +27,13 @@ local function AddMessage(text, client)
 end
 
 local links = {}
-local currsor_pos = 0
 
-if SERVER and Game.IsMultiplayer then
-    Networking.Receive("lualinker.clientsidevalue", function (msg)
-        local position = Vector2(msg.ReadSingle(), msg.ReadSingle())
-        currsor_pos = position
-    end)
-end
-
-Hook.Add("luaLinker.onUse", "examples.luaLinker", function(statusEffect, delta, item)
+Hook.Add("luaLinker.onUse", "lualinker.luaLinker", function(statusEffect, delta, item)
+    local target = findtarget.findtarget(item)
     if CLIENT and Game.IsMultiplayer then 
-        -- for better accurancy
-        client_currsor_pos = (item.ParentInventory.Owner).CursorWorldPosition
-            local msg = Networking.Start("lualinker.clientsidevalue")
-            msg.WriteSingle(client_currsor_pos.X)
-            msg.WriteSingle(client_currsor_pos.Y)
-            Networking.Send(msg)
         return
     end
-
-
-    -- fallabk if sb is clualess
-    if currsor_pos == 0 then
-        currsor_pos = item.WorldPosition
-    end
-
-    if item.ParentInventory == nil or item.ParentInventory.Owner == nil then return end
-
-    local owner = FindClientCharacter(item.ParentInventory.Owner)
-
-    local target = FindClosestItem(item.Submarine, currsor_pos)
+    local owner = findtarget.FindClientCharacter(item.ParentInventory.Owner)
 
     if target == nil then
         AddMessage("No item found", owner)
@@ -106,7 +43,7 @@ Hook.Add("luaLinker.onUse", "examples.luaLinker", function(statusEffect, delta, 
     if links[item] == nil then
         links[item] = target
         AddMessage(string.format("Link Start: \"%s\"", target.Name), owner)
-        currsor_pos = 0
+        findtarget.currsor_pos = 0
     else
         local otherTarget = links[item]
 
@@ -149,7 +86,7 @@ Hook.Add("luaLinker.onUse", "examples.luaLinker", function(statusEffect, delta, 
         end
 
         links[item] = nil
-        currsor_pos = 0
+        findtarget.currsor_pos = 0
     end
 end)
 
