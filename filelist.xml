@@ -1,5 +1,4 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <contentpackage name="Lua Linker" modversion="1.1.9" corepackage="False" steamworkshopid="2852315967" gameversion="0.21.6.0">
   <Item file="%ModDir%/Item.xml" />
-  <Item file="%ModDir%/LuaDisplay.xml" />
 </contentpackage>
